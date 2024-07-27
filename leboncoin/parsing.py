@@ -2,10 +2,11 @@
 parsing.py
 ----------
 
-Ce module contient les fonctions nécessaires pour extraire les données pertinentes 
-des pages HTML du site leboncoin.fr. Il utilise BeautifulSoup et Selectolax pour le parsing HTML.
+This module contains functions for extracting relevant data
+from HTML pages of the site leboncoin.fr. It uses BeautifulSoup
+and Selectolax for HTML parsing.
 """
 
 from bs4 import BeautifulSoup
 
-# Initialisation et importations des bibliothèques nécessaires.
+# Initialization and necessary imports.

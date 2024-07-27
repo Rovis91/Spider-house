@@ -2,7 +2,7 @@
 __init__.py
 -----------
 
-Ce fichier initialise le module `leboncoin`.
+This file initializes the `leboncoin` module.
 """
 
-# Initialisation du module.
+# Initialization of the module.

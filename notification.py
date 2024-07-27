@@ -2,8 +2,8 @@
 notification.py
 ---------------
 
-Ce module enverra des notifications en cas de nouvelles annonces ou de changements de prix 
-(à implémenter plus tard).
+This module will send notifications in case of new listings or price changes
+(to be implemented later).
 """
 
-# Initialisation et importations des bibliothèques nécessaires.
+# Initialization and necessary imports.

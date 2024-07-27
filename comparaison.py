@@ -2,8 +2,8 @@
 comparison.py
 -------------
 
-Ce module gère la comparaison entre les nouvelles annonces et l'historique pour toutes les annonces, 
-indépendamment de leur source.
+This module handles the comparison between new listings and the historical data
+for all listings, regardless of their source.
 """
 
-# Initialisation et importations des bibliothèques nécessaires.
+# Initialization and necessary imports.
