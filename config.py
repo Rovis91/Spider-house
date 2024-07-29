@@ -42,6 +42,9 @@ def get_proxy_opener(username=USERNAME, password=PASSWORD, user_agent=USER_AGENT
         urllib.request.OpenerDirector: The configured proxy opener.
     """
     try:
+        if not all([username, password, user_agent, host, port]):
+            raise ValueError("All proxy parameters must be provided and non-empty.")
+
         # Ensure session_id is an integer
         session_id = random.randint(0, 1000000)
         super_proxy_url = f'http://{username}-country-{country}-session-{session_id}:{password}@{host}:{port}'

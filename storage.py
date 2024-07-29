@@ -7,6 +7,7 @@ This module handles the storage and retrieval of JSON data for all listings.
 import psycopg2
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -17,7 +18,16 @@ DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 def store_data_to_sql(ad):
+    """
+    Store ad data to the SQL database.
+    
+    Args:
+        ad (dict): The ad data to store.
+    """
     try:
         # Establish a database connection
         conn = psycopg2.connect(
@@ -51,10 +61,13 @@ def store_data_to_sql(ad):
 
         # Commit the transaction
         conn.commit()
+        logging.info(f"Ad {ad['id']} inserted successfully")
         
-    except Exception as e:
-        print(f"Error inserting ad data: {e}")
+    except psycopg2.Error as e:
+        logging.error(f"Error inserting ad data: {e}")
     finally:
         # Close the cursor and connection
-        cursor.close()
-        conn.close()
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

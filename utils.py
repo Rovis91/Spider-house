@@ -5,8 +5,18 @@ utils.py
 This module contains utility functions for validating ad data.
 """
 import re
+from typing import List, Dict, Any
 
-def validate_data(ad):
+def validate_data(ad: Dict[str, Any]) -> List[str]:
+    """
+    Validate ad data to ensure it meets expected criteria.
+    
+    Args:
+        ad (Dict[str, Any]): The ad data to validate.
+        
+    Returns:
+        List[str]: A list of validation error messages.
+    """
     errors = []
 
     # Verify the presence and type of mandatory fields

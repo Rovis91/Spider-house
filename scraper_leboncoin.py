@@ -84,25 +84,34 @@ def extract_ads(json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         logging.error('Error extracting ads: %s', e)
         return None
 
-def extract_properties(ads_list):
-    def to_int(value):
+def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Extract and transform properties from the ads list.
+    
+    Args:
+        ads_list (List[Dict[str, Any]]): The list of ads.
+        
+    Returns:
+        List[Dict[str, Any]]: The list of transformed ads.
+    """
+    def to_int(value: Any) -> Optional[int]:
         try:
             return int(value)
         except (TypeError, ValueError):
             return None
 
-    def to_float(value):
+    def to_float(value: Any) -> Optional[float]:
         try:
             return float(str(value).replace(' ', '').replace(',', '.'))
         except (TypeError, ValueError):
             return None
 
-    def to_bool(value):
+    def to_bool(value: Any) -> bool:
         if isinstance(value, str):
             return value.lower() == 'true'
         return bool(value)
 
-    def map_real_estate_type(value):
+    def map_real_estate_type(value: str) -> str:
         mapping = {
             'Appartement': 'Apartment',
             'Maison': 'House',
@@ -112,14 +121,14 @@ def extract_properties(ads_list):
         }
         return mapping.get(value, 'Other')  # Default to 'Other' if not found
 
-    def map_owner_type(value):
+    def map_owner_type(value: str) -> str:
         mapping = {
             'pro': 'professional',
             'particulier': 'private'
         }
         return mapping.get(value, 'private')  # Default to 'private' if not found
 
-    def validate_energy_rate(value):
+    def validate_energy_rate(value: Optional[str]) -> Optional[str]:
         return value.upper() if value and value.upper() in 'ABCDEFG' else None
 
     transformed_data = []
@@ -165,20 +174,17 @@ def extract_properties(ads_list):
 
 if __name__ == "__main__":
     target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
-    """
-    # Uncomment the following block to retrieve HTML content and save it to 'output.html'
+    
     # Retrieve HTML content from the target URL and save it to 'output.html'
     html_content = retrieve_html(target_url)
     if html_content:
         with open('output.html', 'w', encoding='utf-8') as file:
             file.write(html_content)
     
-    # Open 'output.html' and read its content
     # Read the HTML content from 'output.html'
     with open('output.html', 'r', encoding='utf-8') as file:
         html_content = file.read()  
     
-    # Extract and save JSON content
     # Extract JSON content from the HTML and save it to 'list.json'
     json_data = html_to_json(html_content)
     if json_data:
@@ -194,7 +200,7 @@ if __name__ == "__main__":
     if ads_list:
         with open("list_ads.json", 'w', encoding='utf-8') as file:
             json.dump(ads_list, file, ensure_ascii=False, indent=4)
-    """
+    
     # Read the ads list from 'list_ads.json'
     with open('list_ads.json', 'r', encoding='utf-8') as file:
         ads_list = json.load(file)
