@@ -71,3 +71,47 @@ def store_data_to_sql(ad):
             cursor.close()
         if conn:
             conn.close()
+
+def store_images_to_sql(ad_id: int, image_urls: list[str]):
+    """
+    Store image URLs to the SQL database for a given ad.
+
+    Args:
+        ad_id (int): The ID of the ad to associate images with.
+        image_urls (List[str]): A list of image URLs to store.
+    """
+    if not image_urls:
+        logging.info(f"No images to store for ad {ad_id}")
+        return
+
+    try:
+        # Establish a database connection
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        cursor = conn.cursor()
+
+        # Insert the image URLs into the images table
+        for url in image_urls:
+            cursor.execute("""
+                INSERT INTO images (ad_id, url) 
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+            """, (ad_id, url))
+
+        # Commit the transaction
+        conn.commit()
+        logging.info(f"Images for ad {ad_id} inserted successfully")
+        
+    except psycopg2.Error as e:
+        logging.error(f"Error inserting image data for ad {ad_id}: {e}")
+    finally:
+        # Close the cursor and connection
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

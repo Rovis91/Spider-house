@@ -10,10 +10,10 @@ from typing import List, Dict, Any
 def validate_data(ad: Dict[str, Any]) -> List[str]:
     """
     Validate ad data to ensure it meets expected criteria.
-    
+
     Args:
         ad (Dict[str, Any]): The ad data to validate.
-        
+
     Returns:
         List[str]: A list of validation error messages.
     """
@@ -84,5 +84,10 @@ def validate_data(ad: Dict[str, Any]) -> List[str]:
         errors.append('Invalid immo_sell_type')
     if ad.get('old_price') and not isinstance(ad['old_price'], (int, float)):
         errors.append('Invalid old_price')
+
+    # Verify that there is at least one image URL
+    images = ad.get('images', [])
+    if not images or not isinstance(images, list) or not all(isinstance(url, str) for url in images) or len(images) == 0:
+        errors.append('Missing or invalid images')
 
     return errors

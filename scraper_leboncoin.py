@@ -12,7 +12,7 @@ import json
 from bs4 import BeautifulSoup
 from config import get_proxy_opener
 from typing import List, Dict, Any, Optional
-from storage import store_data_to_sql
+from storage import store_data_to_sql,store_images_to_sql
 from utils import validate_data
 import re
 
@@ -87,10 +87,10 @@ def extract_ads(json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
 def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Extract and transform properties from the ads list.
-    
+
     Args:
         ads_list (List[Dict[str, Any]]): The list of ads.
-        
+
     Returns:
         List[Dict[str, Any]]: The list of transformed ads.
     """
@@ -134,6 +134,7 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     transformed_data = []
     for ad in ads_list:
         attributes = {attr['key']: attr['value_label'] for attr in ad.get('attributes', [])}
+        images = ad.get('images', {})
         transformed_ad = {
             'id': ad.get('list_id'),
             'publication_date': ad.get('first_publication_date'),
@@ -167,12 +168,15 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             'annual_charges': to_float(attributes.get('annual_charges')),
             'bedrooms': to_int(attributes.get('bedrooms').split()[0]) if attributes.get('bedrooms') else None,
             'immo_sell_type': attributes.get('immo_sell_type'),
-            'old_price': to_float(attributes.get('old_price'))
+            'old_price': to_float(attributes.get('old_price')),
+            # Extract the large image URLs
+            'images': images.get('urls_large', [])
         }
         transformed_data.append(transformed_ad)
     return transformed_data
 
 if __name__ == "__main__":
+    """
     target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
     
     # Retrieve HTML content from the target URL and save it to 'output.html'
@@ -200,7 +204,7 @@ if __name__ == "__main__":
     if ads_list:
         with open("list_ads.json", 'w', encoding='utf-8') as file:
             json.dump(ads_list, file, ensure_ascii=False, indent=4)
-    
+    """
     # Read the ads list from 'list_ads.json'
     with open('list_ads.json', 'r', encoding='utf-8') as file:
         ads_list = json.load(file)
@@ -216,4 +220,5 @@ if __name__ == "__main__":
             print(f"Validation errors for ad {ad['id']}: {errors}")
         else:
             print(f"Ad {ad['id']} is valid")
-            store_data_to_sql(ad)
+            store_data_to_sql(ad)  # Store ad data first
+            store_images_to_sql(ad['id'], ad['images'])  # Then store images

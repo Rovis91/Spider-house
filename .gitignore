@@ -1,6 +1,6 @@
 .env
 *.pyc
-leboncoin/logs
+logs
 test.py
 .gitignore
 *.html
