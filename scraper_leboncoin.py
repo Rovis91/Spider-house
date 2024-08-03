@@ -12,8 +12,7 @@ import json
 from bs4 import BeautifulSoup
 from config import get_proxy_opener
 from typing import List, Dict, Any, Optional
-from storage import store_data_to_sql,store_images_to_sql
-from utils import validate_data
+from storage import process_ad
 import re
 
 # Configure logging
@@ -134,7 +133,16 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     transformed_data = []
     for ad in ads_list:
         attributes = {attr['key']: attr['value_label'] for attr in ad.get('attributes', [])}
-        images = ad.get('images', {})
+
+        # Handle price extraction, assuming it might be a list or a string
+        price = ad.get('price')
+        if isinstance(price, list):
+            price = price[0] if price else None
+        price = to_int(price)
+
+        old_price = attributes.get('old_price')
+        old_price = to_int(old_price)
+
         transformed_ad = {
             'id': ad.get('list_id'),
             'publication_date': ad.get('first_publication_date'),
@@ -142,19 +150,19 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             'title': ad.get('subject'),
             'description': ad.get('body'),
             'url': ad.get('url'),
-            'price': to_float(ad.get('price')[0]) if isinstance(ad.get('price'), list) else to_float(ad.get('price')),
+            'price': price,
             'latitude': ad.get('location', {}).get('lat'),
             'longitude': ad.get('location', {}).get('lng'),
             'location_city': ad.get('location', {}).get('city'),
             'location_zipcode': to_int(ad.get('location', {}).get('zipcode')),
             'type': map_owner_type(ad.get('owner', {}).get('type')),
             'real_estate_type': map_real_estate_type(attributes.get('real_estate_type', 'Other')),
-            'square': to_float(attributes.get('square')),
+            'square': to_int(attributes.get('square')),
             'rooms': to_int(attributes.get('rooms')),
             'energy_rate': validate_energy_rate(attributes.get('energy_rate')) if 'energy_rate' in attributes else None,
             'ges': validate_energy_rate(attributes.get('ges')) if 'ges' in attributes else None,
             'bathrooms': to_int(attributes.get('bathrooms')),
-            'land_surface': to_float(attributes.get('land_plot_surface')),
+            'land_surface': to_int(attributes.get('land_plot_surface')),
             'parking': to_bool(attributes.get('parking')),
             'cellar': to_bool(attributes.get('cellar')),
             'swimming_pool': to_bool(attributes.get('swimming_pool')),
@@ -165,12 +173,11 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             'nb_floors_building': to_int(attributes.get('nb_floors_building')),
             'outside_access': attributes.get('outside_access', ''),
             'building_year': to_int(attributes.get('building_year')),
-            'annual_charges': to_float(attributes.get('annual_charges')),
-            'bedrooms': to_int(attributes.get('bedrooms').split()[0]) if attributes.get('bedrooms') else None,
+            'annual_charges': to_int(attributes.get('annual_charges')),
+            'bedrooms': to_int(attributes.get('bedrooms')),
             'immo_sell_type': attributes.get('immo_sell_type'),
-            'old_price': to_float(attributes.get('old_price')),
-            # Extract the large image URLs
-            'images': images.get('urls_large', [])
+            'old_price': old_price,
+            'images': ad.get('images', {}).get('urls_large', [])
         }
         transformed_data.append(transformed_ad)
     return transformed_data
@@ -205,20 +212,14 @@ if __name__ == "__main__":
         with open("list_ads.json", 'w', encoding='utf-8') as file:
             json.dump(ads_list, file, ensure_ascii=False, indent=4)
     """
-    # Read the ads list from 'list_ads.json'
     with open('list_ads.json', 'r', encoding='utf-8') as file:
         ads_list = json.load(file)
     
-    # Validate data and store only if all ads are valid
+    # Extract properties to transform raw data into structured data
     sql_ready_data = extract_properties(ads_list)
 
-    all_valid = True
+    # Process each ad, including validation and storage
     for ad in sql_ready_data:
-        errors = validate_data(ad)
-        if errors:
-            all_valid = False
-            print(f"Validation errors for ad {ad['id']}: {errors}")
-        else:
-            print(f"Ad {ad['id']} is valid")
-            store_data_to_sql(ad)  # Store ad data first
-            store_images_to_sql(ad['id'], ad['images'])  # Then store images
+        process_ad(ad)
+
+    logging.info("All ads processed.")
