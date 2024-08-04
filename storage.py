@@ -312,7 +312,7 @@ def process_ad(ad_data: Dict[str, Any]):
             if not image_exists:
                 new_image = Image(ad_id=ad_data['id'], url=url)
                 session.add(new_image)
-        logging.info(f"Inserted image for ad {ad_data['id']}")
+                logging.info(f"Inserted image for ad {ad_data['id']}")
 
         session.commit()
 

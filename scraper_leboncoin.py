@@ -183,9 +183,9 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return transformed_data
 
 if __name__ == "__main__":
-    """
-    target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
     
+    target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
+    """
     # Retrieve HTML content from the target URL and save it to 'output.html'
     html_content = retrieve_html(target_url)
     if html_content:
