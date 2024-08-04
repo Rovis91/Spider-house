@@ -1,51 +1,39 @@
 """
-scraper_leboncoin.py
+leboncoin.py
 ----------
 
+Description:
+------------
 This module contains functions for retrieving real estate listings
 from a given URL on the site leboncoin.fr. It uses Playwright to
 automate navigation and bypass anti-bot protections.
+
+Functions:
+----------
+- html_to_json: Converts HTML content to JSON.
+- extract_ads: Extracts ad listings from JSON data.
+- extract_properties: Transforms raw ad data into structured format.
+- main: Demonstrates retrieving and processing real estate listings.
+
 """
 
 import logging
 import json
-from bs4 import BeautifulSoup
-from config import get_proxy_opener
 from typing import List, Dict, Any, Optional
+from bs4 import BeautifulSoup
+from scraper import retrieve_html
 from storage import process_ad
-import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def retrieve_html(target_url: str) -> Optional[str]:
-    """
-    Retrieve HTML content from a given URL using a proxy opener.
-    
-    Args:
-        target_url (str): The URL of the target website.
-        
-    Returns:
-        Optional[str]: The HTML content of the page, or None if an error occurs.
-    """
-    try:
-        opener = get_proxy_opener()
-        logging.info('Performing request to %s', target_url)
-        response = opener.open(target_url)
-        html_content = response.read().decode('utf-8')  # Decode the content to string
-        logging.info('HTML content retrieved successfully')
-        return html_content
-    except Exception as e:
-        logging.error('Error retrieving URL: %s', e)
-        return None
-
 def html_to_json(html_content: str) -> Optional[Dict[str, Any]]:
     """
     Convert HTML content to JSON by extracting the data from a specific script tag.
-    
+
     Args:
         html_content (str): The HTML content of the page.
-        
+
     Returns:
         Optional[Dict[str, Any]]: The JSON data extracted from the HTML content, or None if an error occurs.
     """
@@ -68,10 +56,10 @@ def html_to_json(html_content: str) -> Optional[Dict[str, Any]]:
 def extract_ads(json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
     """
     Extract the list of ads from the JSON data.
-    
+
     Args:
         json_data (Dict[str, Any]): The JSON data containing ad listings.
-        
+
     Returns:
         Optional[List[Dict[str, Any]]]: A list of ads, or None if an error occurs.
     """
@@ -182,26 +170,29 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         transformed_data.append(transformed_ad)
     return transformed_data
 
-if __name__ == "__main__":
-    
-    target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
+def main(target_url: str):
+    """
+    Main function to demonstrate retrieving and processing real estate listings from Leboncoin.
+
+    Args:
+        target_url (str): The URL of the target website to scrape.
     """
     # Retrieve HTML content from the target URL and save it to 'output.html'
     html_content = retrieve_html(target_url)
     if html_content:
         with open('output.html', 'w', encoding='utf-8') as file:
             file.write(html_content)
-    
+
     # Read the HTML content from 'output.html'
     with open('output.html', 'r', encoding='utf-8') as file:
-        html_content = file.read()  
-    
+        html_content = file.read()
+
     # Extract JSON content from the HTML and save it to 'list.json'
     json_data = html_to_json(html_content)
     if json_data:
         with open("list.json", 'w', encoding='utf-8') as file:
             json.dump(json_data, file, ensure_ascii=False, indent=4)
-    
+
     # Read the JSON content from 'list.json'
     with open('list.json', 'r', encoding='utf-8') as file:
         json_data = json.load(file)
@@ -211,10 +202,10 @@ if __name__ == "__main__":
     if ads_list:
         with open("list_ads.json", 'w', encoding='utf-8') as file:
             json.dump(ads_list, file, ensure_ascii=False, indent=4)
-    """
+
     with open('list_ads.json', 'r', encoding='utf-8') as file:
         ads_list = json.load(file)
-    
+
     # Extract properties to transform raw data into structured data
     sql_ready_data = extract_properties(ads_list)
 
@@ -223,3 +214,8 @@ if __name__ == "__main__":
         process_ad(ad)
 
     logging.info("All ads processed.")
+
+if __name__ == "__main__":
+    # Replace with the target URL you want to scrape
+    target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
+    main(target_url)

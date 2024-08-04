@@ -50,3 +50,17 @@ CREATE TABLE images (
 -- Création des index séparément
 CREATE INDEX idx_publication_date ON annonces(publication_date);
 CREATE INDEX idx_location_city ON annonces(location_city);
+
+-- Création des tables des villes et des URLs par site
+CREATE TABLE IF NOT EXISTS cities (
+    id SERIAL PRIMARY KEY,
+    zipcode VARCHAR(5) NOT NULL,
+    insee_code VARCHAR(5) NOT NULL UNIQUE,
+    city_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS leboncoin_urls (
+    id SERIAL PRIMARY KEY,
+    insee_code VARCHAR(5) NOT NULL REFERENCES cities(insee_code) ON DELETE CASCADE,
+    url VARCHAR(255) NOT NULL
+);

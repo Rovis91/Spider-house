@@ -1,8 +1,33 @@
 """
 storage.py
-----------
 
-This module handles the storage and retrieval of JSON data for all listings.
+Description:
+------------
+This module manages the storage and retrieval of JSON data for real estate listings,
+using SQLAlchemy to interact with a PostgreSQL database.
+
+Features:
+---------
+- Loads environment variables for database configuration.
+- Defines data models with SQLAlchemy for cities, Leboncoin URLs, listings, and associated images.
+- Validates listing data to ensure compliance with required criteria.
+- Inserts and updates data in the database with error handling and logging.
+
+Main Functions:
+---------------
+1. validate_data(ad: Dict[str, Any]) -> List[str]:
+   - Validates listing data to ensure it meets the expected criteria.
+
+2. process_ad(ad_data: Dict[str, Any]):
+   - Validates, inserts, or updates a listing in the database.
+   - Manages the addition and updating of images associated with listings.
+
+3. add_or_update_city(zipcode: str, insee_code: str, city_name: str):
+   - Adds a new city or updates an existing city's information in the database.
+
+4. add_or_update_leboncoin_url(insee_code: str, url: str):
+   - Adds or updates a Leboncoin URL for a specific city in the database.
+
 """
 
 import logging
@@ -11,9 +36,8 @@ import re
 from typing import Dict, Any, List
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -35,6 +59,25 @@ Session = sessionmaker(bind=engine)
 
 # SQLAlchemy setup
 Base = declarative_base()
+
+class City(Base):
+    __tablename__ = 'cities'
+
+    id = Column(Integer, primary_key=True)
+    zipcode = Column(String(5), nullable=False)
+    insee_code = Column(String(5), nullable=False, unique=True)
+    city_name = Column(String(100), nullable=False)
+
+    leboncoin_urls = relationship("LeboncoinURL", back_populates="city", cascade="all, delete-orphan")
+
+class LeboncoinURL(Base):
+    __tablename__ = 'leboncoin_urls'
+
+    id = Column(Integer, primary_key=True)
+    insee_code = Column(String(5), ForeignKey('cities.insee_code', ondelete='CASCADE'))
+    url = Column(String(255), nullable=False)
+
+    city = relationship("City", back_populates="leboncoin_urls")
 
 class Annonce(Base):
     __tablename__ = 'annonces'
@@ -319,5 +362,71 @@ def process_ad(ad_data: Dict[str, Any]):
     except Exception as e:
         session.rollback()
         logging.error(f"Error processing ad {ad_data['id']}: {e}")
+    finally:
+        session.close()
+
+def add_or_update_city(zipcode: str, insee_code: str, city_name: str):
+    """
+    Add a new city or update an existing city's information.
+
+    Args:
+        zipcode (str): The postal code of the city.
+        insee_code (str): The INSEE code of the city.
+        city_name (str): The name of the city.
+    """
+    session = Session()
+    try:
+        city = session.query(City).filter_by(insee_code=insee_code).first()
+        if city:
+            # Update existing city information
+            city.zipcode = zipcode
+            city.city_name = city_name
+            logging.info(f"Updated city {city_name} with INSEE code {insee_code}")
+        else:
+            # Add a new city
+            new_city = City(zipcode=zipcode, insee_code=insee_code, city_name=city_name)
+            session.add(new_city)
+            logging.info(f"Inserted new city {city_name} with INSEE code {insee_code}")
+
+        session.commit()
+
+    except IntegrityError:
+        session.rollback()
+        logging.warning(f"City with INSEE code {insee_code} already exists.")
+    except Exception as e:
+        session.rollback()
+        logging.error(f"Error adding/updating city {city_name}: {e}")
+    finally:
+        session.close()
+
+def add_or_update_leboncoin_url(insee_code: str, url: str):
+    """
+    Add or update a Leboncoin URL for a specific city identified by its INSEE code.
+
+    Args:
+        insee_code (str): The INSEE code of the city.
+        url (str): The URL of the city on Leboncoin.
+    """
+    session = Session()
+    try:
+        city_url = session.query(LeboncoinURL).filter_by(insee_code=insee_code).first()
+        if city_url:
+            # Update existing URL
+            city_url.url = url
+            logging.info(f"Updated Leboncoin URL for city with INSEE code {insee_code}")
+        else:
+            # Add a new URL
+            new_city_url = LeboncoinURL(insee_code=insee_code, url=url)
+            session.add(new_city_url)
+            logging.info(f"Inserted new Leboncoin URL for city with INSEE code {insee_code}")
+
+        session.commit()
+
+    except IntegrityError:
+        session.rollback()
+        logging.warning(f"Leboncoin URL for city with INSEE code {insee_code} already exists.")
+    except Exception as e:
+        session.rollback()
+        logging.error(f"Error adding/updating Leboncoin URL for city with INSEE code {insee_code}: {e}")
     finally:
         session.close()
