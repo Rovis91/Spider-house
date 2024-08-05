@@ -1,6 +1,6 @@
 .env
 *.pyc
-logs
+logs/
 test.py
 .gitignore
 *.html
