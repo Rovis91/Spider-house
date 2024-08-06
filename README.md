@@ -1,94 +1,75 @@
-# Real Estate Listings Scraping Project on Leboncoin.fr
 
-## Context and Objectives
+# Spider House
 
-This project aims to develop a scraping module to retrieve real estate listings from the site leboncoin.fr. The goal is to check daily if new listings have been posted in specific cities and to maintain a history of listings for future comparisons. Eventually, this module could be extended to scrape other sites.
+## Overview
 
-### Main Features
+**Spider House** is a web scraping tool designed to extract real estate listings from platforms like Leboncoin. It automates the process of notifying users, particularly real estate agencies, about new listings that match their criteria.
 
-1. **Listings Scraping:**
-   - Retrieve real estate listings from a given URL.
-   - Extract key information: Title, Publication Date, Price, Link.
+## Features
 
-2. **Listings Comparison:**
-   - Compare new listings with the history to detect new listings or price changes.
+- **Automated Scraping**: Extracts real estate listings with automated navigation to handle anti-bot protections.
+- **Dynamic URL Management**: Generates and verifies URLs for cities based on postal codes.
+- **Database Integration**: Stores listings, images, and city information in a PostgreSQL database.
+- **Data Validation**: Ensures all data is validated before database insertion.
 
-3. **Data Storage:**
-   - Store listings in JSON format, one file per city (based on postal code).
+## Getting Started
 
-4. **Proxies and Captchas Management:**
-   - Integrate the Web Unlocker service from brightdata.fr to manage proxies and captchas.
+### Prerequisites
 
-### Frequency and Execution
+- Python 3.8+
+- PostgreSQL
+- Set up environment variables for database and proxy configurations.
 
-- The script will run daily to check for new listings.
-- Initially, tests will be conducted locally on Windows, with a planned migration to a Linux VM for execution.
+### Installation
 
-### Project Structure
+1. **Clone the repository:**
 
-1. **Scraping Modules:**
-   - **scraper.py:** Contains functions to retrieve listings from a given URL.
-   - **parsing.py:** Contains functions to extract relevant data from HTML pages.
+   ```bash
+   git clone https://github.com/Rovis91/Spider-house.git
+   cd Spider-house
+   ```
 
-2. **Data Management Modules:**
-   - **storage.py:** Manages the storage and retrieval of JSON data.
-   - **comparison.py:** Manages the comparison between new listings and the history.
+2. **Install dependencies:**
 
-3. **Configuration and Utility Modules:**
-   - **config.py:** Contains global configurations, including proxy settings.
-   - **utils.py:** Contains utility functions for various tasks (e.g., date handling).
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. **Notification Modules (to be implemented later):**
-   - **notification.py:** Will send notifications in case of new listings or price changes.
+3. **Configure environment variables**: Create a `.env` file with the following variables:
 
-### Technical Details
+   ```plaintext
+   BD_USERNAME=<your_db_username>
+   PASSWORD=<your_db_password>
+   USER_AGENT=<your_user_agent>
+   HOST=<proxy_host>
+   PORT=<proxy_port>
+   ```
 
-1. **Scraping:**
-   - Use BeautifulSoup and Selectolax libraries for HTML parsing.
-   - Use Playwright to automate navigation and bypass anti-bot protections.
-   - Configure HTTP headers to simulate human navigation.
+### Usage
 
-2. **Data Storage:**
-   - Store listings in JSON format, one file per city. Example structure:
+As the project is under development, specific scripts and usage instructions will be provided in future updates.
 
-     ```json
-     {
-         "listings": [
-             {
-                 "title": "Appartement T3",
-                 "publication_date": "2024-07-26",
-                 "price": "250000",
-                 "link": "https://www.leboncoin.fr/ventes_immobilieres/1234567890"
-             }
-         ]
-     }
-     ```
+## Contributing
 
-3. **Proxies Management:**
-   - Integrate the Web Unlocker service from brightdata.fr to manage proxies and captchas.
-   - Configure proxies directly in HTTP requests.
+Contributions are welcome! Please open issues or pull requests to propose changes or report problems.
 
-4. **Listings Comparison:**
-   - Compare based on the title and link of the listing to identify new listings.
-   - Update the listings JSON file, adding new listings or updating prices.
+## License
 
-### Directory and File Structure
+This project is licensed under [MIT License](LICENSE).
 
-'''
-project_root/
-│
-├── leboncoin/
-│   ├── **init**.py
-│   ├── scraper.py
-│   ├── parsing.py
-│   ├── config.py
-│   └── utils.py
-│
-├── storage.py
-├── comparison.py
-└── notification.py
-'''
+## Contact
 
-## Conclusion
+For any questions, please contact me via [GitHub](https://github.com/Rovis91).
 
-By structuring the project in this way, we separate elements specific to leboncoin.fr from general elements, allowing for better modularity and ease of extension to other sites in the future. The code is organized to be clear, maintainable, and scalable.
+## Roadmap
+
+- Integrate additional real estate websites.
+- Develop email alert systems.
+- Enhance scraping performance.
+- Implement CI/CD pipeline for deployment.
+
+---
+
+### Note
+
+This project is in active development. Tests and comprehensive documentation will be added in future updates.

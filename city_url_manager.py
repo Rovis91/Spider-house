@@ -1,23 +1,35 @@
 """
-city_url_manager.py
+city_processor.py
 
 Description:
 ------------
-This module manages the search of URLs for cities on different websites.
+This module processes postal codes to retrieve associated city names and INSEE codes, 
+and manages the generation and verification of Leboncoin URLs for these cities. 
+It interacts with the database to update city and URL information and validates 
+the accessibility of the URLs.
 
 Features:
 ---------
-- Process postal codes to retrieve city names and INSEE codes.
-- Generate and verify URLs for cities on Leboncoin.
-- Update the database with city and URL information.
+- Fetches city names and INSEE codes using a public API based on postal codes.
+- Generates Leboncoin URLs for real estate listings based on city names and postal codes.
+- Verifies the accessibility and validity of the generated URLs by analyzing their HTML structure.
+- Updates the database with city and URL information, handling errors and logging outcomes.
 
 Main Functions:
 ---------------
-1. process_postal_code: Retrieves city names and updates the database.
-2. generate_leboncoin_url: Generates a Leboncoin URL for a city.
-3. verify_url_accessibility: Verifies if a URL is accessible.
-4. process_zipcode: Processes a zipcode and manages city URL updates.
+1. process_postal_code(postal_code: str) -> List[Tuple[str, str, str]]:
+   - Retrieves city names and INSEE codes based on the given postal code and updates the database.
+
+2. generate_leboncoin_url(city_name: str, postal_code: str) -> str:
+   - Generates a Leboncoin URL for a given city name and postal code.
+
+3. verify_url_accessibility(url: str) -> bool:
+   - Checks if the generated URL is accessible and has the expected HTML structure.
+
+4. process_zipcode(zipcode: int):
+   - Processes a postal code to generate, verify, and store URLs for associated cities.
 """
+
 
 import logging
 import requests

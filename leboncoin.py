@@ -1,20 +1,33 @@
 """
-leboncoin.py
-----------
+real_estate_scraper.py
 
 Description:
 ------------
-This module contains functions for retrieving real estate listings
-from a given URL on the site leboncoin.fr. It uses Playwright to
-automate navigation and bypass anti-bot protections.
+This module is designed to scrape and process real estate listings from Leboncoin. 
+It retrieves HTML content, extracts JSON data from the page, transforms ad listings 
+into structured data, and processes each ad for validation and storage in the database.
 
-Functions:
-----------
-- html_to_json: Converts HTML content to JSON.
-- extract_ads: Extracts ad listings from JSON data.
-- extract_properties: Transforms raw ad data into structured format.
-- main: Demonstrates retrieving and processing real estate listings.
+Features:
+---------
+- Retrieves HTML content from a specified Leboncoin URL.
+- Extracts JSON data from specific script tags in the HTML.
+- Parses and transforms JSON data into structured real estate listings.
+- Validates and processes listings for storage in a database.
+- Supports conversion of various property attributes to standard data types.
 
+Main Functions:
+---------------
+1. html_to_json(html_content: str) -> Optional[Dict[str, Any]]:
+   - Converts HTML content to JSON by extracting data from a specific script tag.
+
+2. extract_ads(json_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+   - Extracts the list of ads from the JSON data.
+
+3. extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+   - Extracts and transforms properties from the ads list into structured data.
+
+4. main(target_url: str):
+   - Main function demonstrating the process of retrieving and processing real estate listings from Leboncoin.
 """
 
 import logging

@@ -1,18 +1,28 @@
 """
-scraper.py
----------
+proxy_scraper.py
 
 Description:
 ------------
-This module contains specific configurations for scraping leboncoin.fr,
-including proxy settings and HTTP headers.
+This module handles the retrieval of HTML content from websites using a proxy. 
+It configures a proxy connection using environment variables and supports retry 
+mechanisms to handle common HTTP errors, such as 502 Bad Gateway.
 
-Functions:
-----------
-- get_proxy_opener: Configures a proxy opener for web requests.
-- retrieve_html: Fetches HTML content from a given URL using a proxy.
+Features:
+---------
+- Loads environment variables for proxy configuration, including username, password, and host details.
+- Creates a proxy opener with user-defined settings for secure web requests.
+- Retrieves HTML content from target URLs using the configured proxy.
+- Implements retry logic for handling specific HTTP errors to ensure robust web scraping.
 
+Main Functions:
+---------------
+1. get_proxy_opener(username=USERNAME, password=PASSWORD, user_agent=USER_AGENT, country=COUNTRY, host=HOST, port=PORT) -> urllib.request.OpenerDirector:
+   - Creates and returns a proxy opener using specified parameters, ensuring proper setup for web requests.
+
+2. retrieve_html(target_url: str) -> Optional[str]:
+   - Retrieves HTML content from the specified URL using the configured proxy opener and handles HTTP errors with retries.
 """
+
 
 import os
 import random
