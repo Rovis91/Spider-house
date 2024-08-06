@@ -38,11 +38,17 @@
 3. **Configure environment variables**: Create a `.env` file with the following variables:
 
    ```plaintext
-   BD_USERNAME=<your_db_username>
-   PASSWORD=<your_db_password>
-   USER_AGENT=<your_user_agent>
-   HOST=<proxy_host>
-   PORT=<proxy_port>
+   BD_USERNAME=
+   PASSWORD=
+   USER_AGENT=
+   COUNTRY=
+   HOST=
+   PORT=
+   DB_NAME=
+   DB_USER=
+   DB_PASSWORD=
+   DB_HOST=
+   DB_PORT=
    ```
 
 ### Usage

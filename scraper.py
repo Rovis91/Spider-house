@@ -1,5 +1,5 @@
 """
-proxy_scraper.py
+scraper.py
 
 Description:
 ------------
@@ -13,6 +13,7 @@ Features:
 - Creates a proxy opener with user-defined settings for secure web requests.
 - Retrieves HTML content from target URLs using the configured proxy.
 - Implements retry logic for handling specific HTTP errors to ensure robust web scraping.
+- Wait a random time between eaach request to avoid being blocked by the website.
 
 Main Functions:
 ---------------
@@ -30,6 +31,7 @@ import logging
 import urllib.request
 from typing import Optional
 from dotenv import load_dotenv
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -100,6 +102,10 @@ def retrieve_html(target_url: str) -> Optional[str]:
     Returns:
         Optional[str]: The HTML content of the page, or None if an error occurs.
     """
+    wait_time = random.randint(0, 1)
+    logging.info(f"Waiting {wait_time} seconds before retrieving HTML content from {target_url}")
+    time.sleep(wait_time)
+
     max_retries = 3
     for attempt in range(max_retries):
         try:

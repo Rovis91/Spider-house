@@ -1,5 +1,5 @@
 """
-real_estate_scraper.py
+leboncoin.py
 
 Description:
 ------------
@@ -32,10 +32,11 @@ Main Functions:
 
 import logging
 import json
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 from scraper import retrieve_html
-from storage import process_ad
+from storage import process_ad, get_leboncoin_urls_by_conditions
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -51,6 +52,12 @@ def html_to_json(html_content: str) -> Optional[Dict[str, Any]]:
         Optional[Dict[str, Any]]: The JSON data extracted from the HTML content, or None if an error occurs.
     """
     soup = BeautifulSoup(html_content, 'html.parser')
+    
+    # Check if there is results 
+    if soup.find('div', {'data-test-id': 'noResult'}):
+        return 'noResult'
+    
+    # Extract JSON data from the script tag
     script_tag = soup.select_one('script#__NEXT_DATA__')
 
     if script_tag:
@@ -94,141 +101,142 @@ def extract_properties(ads_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: The list of transformed ads.
     """
-    def to_int(value: Any) -> Optional[int]:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
+    transformed_ads = []
 
-    def to_float(value: Any) -> Optional[float]:
-        try:
-            return float(str(value).replace(' ', '').replace(',', '.'))
-        except (TypeError, ValueError):
-            return None
-
-    def to_bool(value: Any) -> bool:
-        if isinstance(value, str):
-            return value.lower() == 'true'
-        return bool(value)
-
-    def map_real_estate_type(value: str) -> str:
-        mapping = {
-            'Appartement': 'Apartment',
-            'Maison': 'House',
-            'Autre': 'Other',
-            'Parking': 'Parking',
-            'Terrain': 'Land'
-        }
-        return mapping.get(value, 'Other')  # Default to 'Other' if not found
-
-    def map_owner_type(value: str) -> str:
-        mapping = {
-            'pro': 'professional',
-            'particulier': 'private'
-        }
-        return mapping.get(value, 'private')  # Default to 'private' if not found
-
-    def validate_energy_rate(value: Optional[str]) -> Optional[str]:
-        return value.upper() if value and value.upper() in 'ABCDEFG' else None
-
-    transformed_data = []
     for ad in ads_list:
-        attributes = {attr['key']: attr['value_label'] for attr in ad.get('attributes', [])}
-
-        # Handle price extraction, assuming it might be a list or a string
-        price = ad.get('price')
-        if isinstance(price, list):
-            price = price[0] if price else None
-        price = to_int(price)
-
-        old_price = attributes.get('old_price')
-        old_price = to_int(old_price)
-
         transformed_ad = {
             'id': ad.get('list_id'),
-            'publication_date': ad.get('first_publication_date'),
-            'status': ad.get('status'),
-            'title': ad.get('subject'),
-            'description': ad.get('body'),
+            'title': ad.get('subject', ''),
+            'description': ad.get('body', ''),
             'url': ad.get('url'),
-            'price': price,
-            'latitude': ad.get('location', {}).get('lat'),
-            'longitude': ad.get('location', {}).get('lng'),
-            'location_city': ad.get('location', {}).get('city'),
-            'location_zipcode': to_int(ad.get('location', {}).get('zipcode')),
-            'type': map_owner_type(ad.get('owner', {}).get('type')),
-            'real_estate_type': map_real_estate_type(attributes.get('real_estate_type', 'Other')),
-            'square': to_int(attributes.get('square')),
-            'rooms': to_int(attributes.get('rooms')),
-            'energy_rate': validate_energy_rate(attributes.get('energy_rate')) if 'energy_rate' in attributes else None,
-            'ges': validate_energy_rate(attributes.get('ges')) if 'ges' in attributes else None,
-            'bathrooms': to_int(attributes.get('bathrooms')),
-            'land_surface': to_int(attributes.get('land_plot_surface')),
-            'parking': to_bool(attributes.get('parking')),
-            'cellar': to_bool(attributes.get('cellar')),
-            'swimming_pool': to_bool(attributes.get('swimming_pool')),
-            'equipments': attributes.get('equipments', ''),
-            'elevator': to_bool(attributes.get('elevator')),
-            'fai_included': to_bool(attributes.get('fai_included')),
-            'floor_number': to_int(attributes.get('floor_number')),
-            'nb_floors_building': to_int(attributes.get('nb_floors_building')),
-            'outside_access': attributes.get('outside_access', ''),
-            'building_year': to_int(attributes.get('building_year')),
-            'annual_charges': to_int(attributes.get('annual_charges')),
-            'bedrooms': to_int(attributes.get('bedrooms')),
-            'immo_sell_type': attributes.get('immo_sell_type'),
-            'old_price': old_price,
-            'images': ad.get('images', {}).get('urls_large', [])
+            'publication_date': datetime.fromisoformat(ad['first_publication_date']),
+            'price': ad['price'][0],
+            'old_price': None,  # Default to None unless found
+            'immo_sell_type': None,  # Will be populated if found in attributes
+            'status': ad.get('status'),
+            'type': ad['owner']['type'],
+            'real_estate_type': None,  # Will be populated if found in attributes
+            'square': None,  # Will be populated if found in attributes
+            'rooms': None,  # Will be populated if found in attributes
+            'bedrooms': None,  # Will be populated if found in attributes
+            'bathrooms': None,  # Default to None unless specified
+            'energy_rate': None,  # Will be populated if found in attributes
+            'ges': None,  # Will be populated if found in attributes
+            'latitude': ad['location'].get('lat'),
+            'longitude': ad['location'].get('lng'),
+            'location_city': ad['location'].get('city_label'),
+            'location_inseecode': ad['location'].get('department_id'),
+            'adresse': None,  # Default to None unless specified
+            'land_surface': None,  # Will be populated if found in attributes
+            'parking': None,  # Default to None unless specified
+            'cellar': None,  # Default to None unless specified
+            'swimming_pool': None,  # Default to None unless specified
+            'equipments': None,  # Will be concatenated from specific attributes
+            'elevator': None,  # Will be populated if found in attributes
+            'fai_included': None,  # Will be populated if found in attributes
+            'floor_number': None,  # Default to None unless specified
+            'nb_floors_building': None,  # Will be populated if found in attributes
+            'outside_access': None,  # Will be populated if found in attributes
+            'building_year': None,  # Will be populated if found in attributes
+            'annual_charges': None  # Will be populated if found in attributes
         }
-        transformed_data.append(transformed_ad)
-    return transformed_data
 
-def main(target_url: str):
+        # Extracting specific attributes
+        for attribute in ad['attributes']:
+            key = attribute.get('key')
+            value = attribute.get('value')
+
+            if key == 'real_estate_type':
+                transformed_ad['real_estate_type'] = attribute['value_label']
+            elif key == 'square':
+                transformed_ad['square'] = float(value)
+            elif key == 'rooms':
+                transformed_ad['rooms'] = int(value)
+            elif key == 'bedrooms':
+                transformed_ad['bedrooms'] = int(value)
+            elif key == 'energy_rate':
+                transformed_ad['energy_rate'] = attribute['value_label']
+            elif key == 'ges':
+                transformed_ad['ges'] = attribute['value_label']
+            elif key == 'land_plot_surface':
+                transformed_ad['land_surface'] = float(value)
+            elif key == 'elevator':
+                transformed_ad['elevator'] = (value == '1')
+            elif key == 'fai_included':
+                transformed_ad['fai_included'] = (value == '1')
+            elif key == 'nb_floors_building':
+                transformed_ad['nb_floors_building'] = int(value)
+            elif key == 'outside_access':
+                transformed_ad['outside_access'] = attribute['value_label']
+            elif key == 'building_year':
+                transformed_ad['building_year'] = int(value)
+            elif key == 'annual_charges':
+                transformed_ad['annual_charges'] = float(value)
+            elif key == 'old_price':
+                transformed_ad['old_price'] = float(value)
+
+        # Extract images
+        transformed_ad['images'] = [
+            {'url': image_url} for image_url in ad['images']['urls']
+        ]
+
+        transformed_ads.append(transformed_ad)
+
+    return transformed_ads
+
+def scrape_all_city_listings(insee_code: str) -> int:
     """
-    Main function to demonstrate retrieving and processing real estate listings from Leboncoin.
+    Scrape all listings for a given city from Leboncoin.
 
     Args:
-        target_url (str): The URL of the target website to scrape.
+        insee_code (str): The INSEE code of the city to scrape.
+
+    Returns:
+        int: Total number of ads processed.
     """
-    # Retrieve HTML content from the target URL and save it to 'output.html'
-    html_content = retrieve_html(target_url)
-    if html_content:
-        with open('output.html', 'w', encoding='utf-8') as file:
-            file.write(html_content)
+    # Retrieve the URL for the city using the INSEE code
+    base_url_data = get_leboncoin_urls_by_conditions(insee_code=insee_code)
+    if not base_url_data:
+        logging.error(f"No URL found for INSEE code: {insee_code}")
+        return 0
 
-    # Read the HTML content from 'output.html'
-    with open('output.html', 'r', encoding='utf-8') as file:
-        html_content = file.read()
+    base_url = base_url_data[0].url
+    total_ads_processed = 0
 
-    # Extract JSON content from the HTML and save it to 'list.json'
-    json_data = html_to_json(html_content)
-    if json_data:
-        with open("list.json", 'w', encoding='utf-8') as file:
-            json.dump(json_data, file, ensure_ascii=False, indent=4)
+    page = 1
+    while True:
+        # Construct the paginated URL
+        paginated_url = f"{base_url}&page={page}"
+        
+        # Retrieve the HTML content
+        html_content = retrieve_html(paginated_url)
+        
+        if html_content == 'noResult':
+            logging.info(f"No results on page {page} for URL: {base_url}")
+            break  # Exit loop if no results
 
-    # Read the JSON content from 'list.json'
-    with open('list.json', 'r', encoding='utf-8') as file:
-        json_data = json.load(file)
+        # Convert HTML to JSON
+        json_data = html_to_json(html_content)
+        if not json_data:
+            logging.warning(f"Failed to extract JSON from page {page} for URL: {base_url}")
+            break  # Exit loop if JSON conversion fails
 
-    # Extract ads list from the JSON data and save it to 'list_ads.json'
-    ads_list = extract_ads(json_data)
-    if ads_list:
-        with open("list_ads.json", 'w', encoding='utf-8') as file:
-            json.dump(ads_list, file, ensure_ascii=False, indent=4)
+        # Extract ads from the JSON data
+        ads_list = extract_ads(json_data)
+        if not ads_list:
+            logging.info(f"No ads found on page {page} for URL: {base_url}")
+            break  # Exit loop if no ads are found
 
-    with open('list_ads.json', 'r', encoding='utf-8') as file:
-        ads_list = json.load(file)
+        # Transform and process ads
+        sql_ready_data = extract_properties(ads_list)
+        for ad in sql_ready_data:
+            process_ad(ad)
+            total_ads_processed += 1
+        
+        logging.info(f"Processed {len(sql_ready_data)} ads from page {page} for URL: {base_url}")
 
-    # Extract properties to transform raw data into structured data
-    sql_ready_data = extract_properties(ads_list)
-
-    # Process each ad, including validation and storage
-    for ad in sql_ready_data:
-        process_ad(ad)
-
-    logging.info("All ads processed.")
-
-if __name__ == "__main__":
-    # Replace with the target URL you want to scrape
-    target_url = 'https://www.leboncoin.fr/v/Morsang-sur-Orge_91390/ventes_immobilieres'
-    main(target_url)
+        # Move to the next page
+        page += 1
+    
+    logging.info(f"Total ads processed: {total_ads_processed}")
+    return total_ads_processed
