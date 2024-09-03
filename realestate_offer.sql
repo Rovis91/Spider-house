@@ -4,7 +4,7 @@ CREATE TYPE owner_type_enum AS ENUM ('professional', 'private');
 CREATE TYPE real_estate_type_enum AS ENUM ('Apartment', 'House', 'Other', 'Parking', 'Land');
 
 -- Create the new table with the updated schema
-CREATE TABLE annonces (
+CREATE TABLE IF NOT EXISTS listing (
     id BIGINT PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description TEXT,  -- Optional
@@ -42,17 +42,34 @@ CREATE TABLE annonces (
 );
 
 -- Create an index on location_inseecode for better performance
-CREATE INDEX idx_location_inseecode ON annonces (location_inseecode);
+CREATE INDEX idx_location_inseecode ON listing (location_inseecode);
 
 -- Create an index on publication_date for better performance
-CREATE INDEX idx_publication_date ON annonces (publication_date);
+CREATE INDEX idx_publication_date ON listing (publication_date);
 
 -- Create the table for images
-CREATE TABLE images (
+CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
-    ad_id BIGINT REFERENCES annonces(id) ON DELETE CASCADE,
+    ad_id BIGINT REFERENCES listing(id) ON DELETE CASCADE,
     url VARCHAR(255) NOT NULL
 );
+
+-- Updated clients table with city codes as VARCHAR(5)
+CREATE TABLE IF NOT EXISTS clients (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    selected_cities VARCHAR(5)[] NOT NULL,  -- City codes stored as strings
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index sur l'email pour éviter les doublons et optimiser les recherches
+CREATE INDEX idx_email ON clients (email);
+
+-- Index sur is_active pour optimiser les recherches des clients actifs
+CREATE INDEX idx_is_active ON clients (is_active);
 
 -- Création des tables des villes et des URLs par site
 CREATE TABLE IF NOT EXISTS cities (
@@ -62,8 +79,12 @@ CREATE TABLE IF NOT EXISTS cities (
     city_name VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS leboncoin_urls (
+CREATE TABLE IF NOT EXISTS website_urls (
     id SERIAL PRIMARY KEY,
     insee_code VARCHAR(5) NOT NULL REFERENCES cities(insee_code) ON DELETE CASCADE,
-    url VARCHAR(255) NOT NULL
+    lbc_url VARCHAR(255), 
+    pap_url VARCHAR(255), 
+    etp_url VARCHAR(255),
+    puv_url VARCHAR(255)
+
 );

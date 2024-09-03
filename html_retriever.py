@@ -1,6 +1,6 @@
-"""
-scraper.py
+#html_retriever.py
 
+"""
 Description:
 ------------
 This module handles the retrieval of HTML content from websites using a proxy. 
@@ -13,17 +13,8 @@ Features:
 - Creates a proxy opener with user-defined settings for secure web requests.
 - Retrieves HTML content from target URLs using the configured proxy.
 - Implements retry logic for handling specific HTTP errors to ensure robust web scraping.
-- Wait a random time between eaach request to avoid being blocked by the website.
-
-Main Functions:
----------------
-1. get_proxy_opener(username=USERNAME, password=PASSWORD, user_agent=USER_AGENT, country=COUNTRY, host=HOST, port=PORT) -> urllib.request.OpenerDirector:
-   - Creates and returns a proxy opener using specified parameters, ensuring proper setup for web requests.
-
-2. retrieve_html(target_url: str) -> Optional[str]:
-   - Retrieves HTML content from the specified URL using the configured proxy opener and handles HTTP errors with retries.
+- Waits a random time between each request to avoid being blocked by the website.
 """
-
 
 import os
 import random

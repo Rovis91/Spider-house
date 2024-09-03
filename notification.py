@@ -1,5 +1,6 @@
+# notification.py
 """
-notification.py
+
 ---------------
 
 This module will send notifications in case of new listings or price changes

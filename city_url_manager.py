@@ -37,7 +37,7 @@ from typing import List, Tuple
 from unidecode import unidecode
 from bs4 import BeautifulSoup
 from storage import add_or_update_city, add_or_update_leboncoin_url
-from scraper import retrieve_html
+from html_retriever import retrieve_html
 
 def process_postal_code(postal_code: str) -> List[Tuple[str, str, str]]:
     """

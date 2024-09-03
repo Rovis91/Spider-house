@@ -1,6 +1,6 @@
-"""
-storage.py
+# storage.py
 
+"""
 Description:
 ------------
 This module manages the storage and retrieval of JSON data for real estate listings,
@@ -41,8 +41,8 @@ Main Functions:
 7. add_or_update_leboncoin_url(insee_code: str, url: str):
    - Adds or updates a Leboncoin URL for a specific city in the database.
 
-8. get_annonces_by_conditions(**conditions) -> List[Annonce]:
-   - Retrieves annonces based on specified conditions.
+8. get_listings_by_conditions(**conditions) -> List[Listing]:
+   - Retrieves listings based on specified conditions.
 
 9. get_cities_by_conditions(**conditions) -> List[City]:
    - Retrieves cities based on specified conditions.
@@ -61,7 +61,7 @@ from typing import Type, Dict, Any, List
 from datetime import datetime
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Boolean, DateTime, Enum,
-    DECIMAL, Text, CheckConstraint, ForeignKey, BigInteger, and_
+    DECIMAL, Text, CheckConstraint, ForeignKey, BigInteger, ARRAY,and_
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.exc import IntegrityError
@@ -99,22 +99,37 @@ class City(Base):
 
     id = Column(Integer, primary_key=True)
     zipcode = Column(String(5), nullable=False)
-    insee_code = Column(String(5), nullable=False, unique=True)  # Ensures match with SQL
+    insee_code = Column(String(5), nullable=False, unique=True)  
     city_name = Column(String(100), nullable=False)
 
     leboncoin_urls = relationship("LeboncoinURL", back_populates="city", cascade="all, delete-orphan")
 
-class LeboncoinURL(Base):
-    __tablename__ = 'leboncoin_urls'
+class WebsiteURLs(Base):
+    __tablename__ = 'website_urls'
 
     id = Column(Integer, primary_key=True)
     insee_code = Column(String(5), ForeignKey('cities.insee_code', ondelete='CASCADE'), nullable=False)
-    url = Column(String(255), nullable=False)
+    lbc_url = Column(String(255), nullable=True)  # Leboncoin URL
+    pap_url = Column(String(255), nullable=True)  # PAP URL
+    etp_url = Column(String(255), nullable=True)  # EntreParticuliers URL
+    puv_url = Column(String(255), nullable=True)  # ParuVendu URL
 
-    city = relationship("City", back_populates="leboncoin_urls")
+    # Relationship back to the City table (assuming this relationship is set up in the City class)
+    city = relationship("City", back_populates="website_urls")
 
-class Annonce(Base):
-    __tablename__ = 'annonces'
+class Client(Base):
+    __tablename__ = 'clients'
+
+    id = Column(Integer, primary_key=True)
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    selected_cities = Column(ARRAY(String(5)), nullable=False) 
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+class Listing(Base):
+    __tablename__ = 'listings'
 
     id = Column(BigInteger, primary_key=True)
     title = Column(String(100), nullable=False)
@@ -136,7 +151,7 @@ class Annonce(Base):
     latitude = Column(DECIMAL(10, 7), nullable=True)
     longitude = Column(DECIMAL(10, 7), nullable=True)
     location_city = Column(String(100), nullable=True)
-    location_inseecode = Column(String(5), nullable=False)  # Match with City table
+    location_inseecode = Column(String(5), nullable=False)
     adresse = Column(String(100), nullable=True)
     land_surface = Column(DECIMAL(10, 2), nullable=True)
     parking = Column(Boolean, nullable=True)
@@ -151,7 +166,7 @@ class Annonce(Base):
     building_year = Column(Integer, nullable=True)
     annual_charges = Column(DECIMAL(10, 2), nullable=True)
 
-    images = relationship("Image", back_populates="annonce", cascade="all, delete-orphan")
+    images = relationship("Image", back_populates="listing", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("energy_rate ~ '^[A-G]$'", name='check_energy_rate'),
@@ -163,9 +178,9 @@ class Image(Base):
     __tablename__ = 'images'
 
     id = Column(Integer, primary_key=True)
-    ad_id = Column(BigInteger, ForeignKey('annonces.id', ondelete='CASCADE'), nullable=False)
+    ad_id = Column(BigInteger, ForeignKey('listings.id', ondelete='CASCADE'), nullable=False)
     url = Column(String(255), nullable=False)
-    annonce = relationship("Annonce", back_populates="images")
+    listing = relationship("Listing", back_populates="images")
 
 def validate_data(ad: Dict[str, Any], model: Type[declarative_base]) -> List[str]:
     """
@@ -353,30 +368,30 @@ def process_ad(ad_data: Dict[str, Any]):
         del ad_data['zipcode']
 
     # Step 2: Ensure optional fields are set to None if unknown
-    annonce_fields = {col.name for col in Annonce.__table__.columns}
-    ad_data = {key: (None if key in annonce_fields and ad_data[key] in ['', None] and Annonce.__table__.columns[key].nullable else value)
+    listing_fields = {col.name for col in Listing.__table__.columns}
+    ad_data = {key: (None if key in listing_fields and ad_data[key] in ['', None] and Listing.__table__.columns[key].nullable else value)
                for key, value in ad_data.items()}
 
     # Step 3: Identify and log unused input data
-    unused_data = set(ad_data.keys()) - annonce_fields
+    unused_data = set(ad_data.keys()) - listing_fields
     if unused_data:
         logging.info(f"Unused input data fields not found in class: {unused_data}")
 
     # Remove unused fields from ad_data
-    ad_data = {k: v for k, v in ad_data.items() if k in annonce_fields}
+    ad_data = {k: v for k, v in ad_data.items() if k in listing_fields}
 
     # Validate ad data
-    ad_errors = validate_data(ad_data, Annonce)
+    ad_errors = validate_data(ad_data, Listing)
     if ad_errors:
         logging.error(f"Validation errors for ad {ad_data.get('id')}: {ad_errors}")
         return
 
     try:
         # Attempt to find an existing ad with matching ID, URL, or title
-        existing_ad = session.query(Annonce).filter(
-            (Annonce.id == ad_data['id']) | 
-            (Annonce.url == ad_data['url']) | 
-            (Annonce.title == ad_data['title'])
+        existing_ad = session.query(Listing).filter(
+            (Listing.id == ad_data['id']) | 
+            (Listing.url == ad_data['url']) | 
+            (Listing.title == ad_data['title'])
         ).first()
 
         if existing_ad:
@@ -400,7 +415,7 @@ def process_ad(ad_data: Dict[str, Any]):
                     logging.info(f"Updated price for ad {ad_data['id']}")
         else:
             # Insert new ad record
-            new_ad = Annonce(**{k: v for k, v in ad_data.items() if k != 'images'})
+            new_ad = Listing(**{k: v for k, v in ad_data.items() if k != 'images'})
             session.add(new_ad)
             logging.info(f"Inserted new ad {ad_data['id']}")
 
@@ -477,35 +492,46 @@ def add_or_update_city(zipcode: str, insee_code: str, city_name: str):
         # Ensure the session is closed after processing
         session.close()
 
-def add_or_update_leboncoin_url(insee_code: str, url: str):
+def add_or_update_website_url(insee_code: str, lbc_url: str = None, pap_url: str = None, etp_url: str = None, puv_url: str = None):
     """
-    Add or update a Leboncoin URL for a specific city identified by its INSEE code.
+    Add or update URLs for different websites for a specific city identified by its INSEE code.
 
     Args:
         insee_code (str): The INSEE code of the city.
-        url (str): The URL of the city on Leboncoin.
+        lbc_url (str): The URL of the city on Leboncoin.
+        pap_url (str): The URL of the city on PAP.
+        etp_url (str): The URL of the city on EntreParticuliers.
+        puv_url (str): The URL of the city on ParuVendu.
     """
-    url_data = {'insee_code': insee_code, 'url': url}
-
-    # Validate URL data
-    errors = validate_url_data(url_data)
-    if errors:
-        logging.error(f"Validation errors for URL with INSEE code {insee_code}: {errors}")
-        return
-
     session = Session()
     try:
-        # Attempt to find an existing URL by INSEE code
-        city_url = session.query(LeboncoinURL).filter_by(insee_code=insee_code).first()
-        if city_url:
-            # Update existing URL
-            city_url.url = url
-            logging.info(f"Updated Leboncoin URL for city with INSEE code {insee_code}")
+        # Attempt to find an existing entry by INSEE code
+        city_urls = session.query(WebsiteURLs).filter_by(insee_code=insee_code).first()
+        if city_urls:
+            # Update existing URLs if provided
+            if lbc_url is not None:
+                city_urls.lbc_url = lbc_url
+                logging.info(f"Updated Leboncoin URL for city with INSEE code {insee_code}")
+            if pap_url is not None:
+                city_urls.pap_url = pap_url
+                logging.info(f"Updated PAP URL for city with INSEE code {insee_code}")
+            if etp_url is not None:
+                city_urls.etp_url = etp_url
+                logging.info(f"Updated EntreParticuliers URL for city with INSEE code {insee_code}")
+            if puv_url is not None:
+                city_urls.puv_url = puv_url
+                logging.info(f"Updated ParuVendu URL for city with INSEE code {insee_code}")
         else:
-            # Add a new URL
-            new_city_url = LeboncoinURL(insee_code=insee_code, url=url)
-            session.add(new_city_url)
-            logging.info(f"Inserted new Leboncoin URL for city with INSEE code {insee_code}")
+            # Add a new entry with the provided URLs
+            new_city_urls = WebsiteURLs(
+                insee_code=insee_code,
+                lbc_url=lbc_url,
+                pap_url=pap_url,
+                etp_url=etp_url,
+                puv_url=puv_url
+            )
+            session.add(new_city_urls)
+            logging.info(f"Inserted new URLs for city with INSEE code {insee_code}")
 
         # Commit the transaction to save changes
         session.commit()
@@ -513,52 +539,112 @@ def add_or_update_leboncoin_url(insee_code: str, url: str):
     except IntegrityError:
         # Handle unique constraint violations, such as duplicate INSEE codes
         session.rollback()
-        logging.warning(f"Leboncoin URL for city with INSEE code {insee_code} already exists.")
+        logging.warning(f"Website URLs for city with INSEE code {insee_code} already exist.")
     except Exception as e:
         # Log any other exceptions that occur
         session.rollback()
-        logging.error(f"Error adding/updating Leboncoin URL for city with INSEE code {insee_code}: {e}", exc_info=True)
+        logging.error(f"Error adding/updating website URLs for city with INSEE code {insee_code}: {e}", exc_info=True)
     finally:
         # Ensure the session is closed after processing
         session.close()
 
-def get_annonces_by_conditions(**conditions) -> List[Annonce]:
+def add_or_update_client(first_name: str, last_name: str, email: str, is_active: bool, selected_cities: list[str]):
     """
-    Retrieve annonces based on various conditions.
+    Add or update a client in the database.
+    **Cities need to be added beforehand.**
+
+    Args:
+        first_name (str): The first name of the client.
+        last_name (str): The last name of the client.
+        email (str): The email address of the client.
+        is_active (bool): Whether the client is active or not.
+        selected_cities (List[str]): A list of INSEE codes of the cities the client is interested in.
+    """
+    session = Session()
+    # Validate if cities exist in the database
+    for city_insee_code in selected_cities:
+        if not get_cities_by_conditions(insee_code=city_insee_code):
+            logging.error(f"City data not found for INSEE code {city_insee_code}")
+            return
+            
+    # Add or update client in database
+    try:
+        # Attempt to find an existing client by email
+        client = session.query(Client).filter_by(email=email).first()
+        if client:
+            # Update existing client if provided
+            if first_name is not None:
+                client.first_name = first_name
+                logging.info(f"Updated first name for client {email}")
+            if last_name is not None:
+                client.last_name = last_name
+                logging.info(f"Updated last name for client {email}")
+            if email is not None:
+                client.email = email
+                logging.info(f"Updated email for client {email}")
+            if is_active is not None:
+                client.is_active = is_active
+                logging.info(f"Updated is_active for client {email}")
+            if selected_cities is not None:
+                client.selected_cities = selected_cities
+                logging.info(f"Updated selected cities for client {email}")
+        else:
+            # Add a new client
+            new_client = Client(first_name=first_name, last_name=last_name, email=email, selected_cities=selected_cities)
+            session.add(new_client)
+            logging.info(f"Inserted new client {email}")
+        
+        # Commit the transaction to save changes
+        session.commit()
+    except IntegrityError:
+        # Handle unique constraint violations, such as duplicate email addresses
+        session.rollback()
+        logging.warning(f"Client with email {email} already exists.")
+    except Exception as e:
+        # Log any other exceptions that occur
+        session.rollback()
+        logging.error(f"Error adding/updating client {email}: {e}", exc_info=True)
+    finally:
+        # Ensure the session is closed after processing
+        session.close()
+
+def get_listings_by_conditions(**conditions) -> List[Listing]:
+    """
+    Retrieve listings based on various conditions.
 
     Args:
         **conditions: Arbitrary keyword arguments representing column names and their desired values.
 
     Returns:
-        List[Annonce]: A list of annonces matching the specified conditions.
+        List[Listing]: A list of listings matching the specified conditions.
     """
     session = Session()
     try:
-        query = session.query(Annonce)
+        query = session.query(Listing)
 
         # Build filters based on provided conditions
         filters = []
         for field, value in conditions.items():
-            column = getattr(Annonce, field, None)
+            column = getattr(Listing, field, None)
             if column is not None:
                 filters.append(column == value)
             else:
-                logging.warning(f"Invalid field name {field} in conditions. It does not exist in Annonce.")
+                logging.warning(f"Invalid field name {field} in conditions. It does not exist in Listing.")
 
         # Apply filters to the query
         if filters:
             query = query.filter(and_(*filters))
-            logging.info(f"Retrieving annonces with conditions: {conditions}")
+            logging.info(f"Retrieving listings with conditions: {conditions}")
         else:
-            logging.info("No valid conditions provided. Retrieving all annonces.")
+            logging.info("No valid conditions provided. Retrieving all listings.")
 
         # Execute query and retrieve results
-        annonces = query.all()
-        logging.info(f"Retrieved {len(annonces)} annonces.")
+        listings = query.all()
+        logging.info(f"Retrieved {len(listings)} listings.")
 
-        return annonces
+        return listings
     except Exception as e:
-        logging.error(f"Error retrieving annonces: {e}", exc_info=True)
+        logging.error(f"Error retrieving listings: {e}", exc_info=True)
         return []
     finally:
         # Ensure the session is closed after processing
@@ -606,43 +692,67 @@ def get_cities_by_conditions(**conditions) -> List[City]:
         # Ensure the session is closed after processing
         session.close()
 
-def get_leboncoin_urls_by_conditions(**conditions) -> List[LeboncoinURL]:
-    """
-    Retrieve Leboncoin URLs based on various conditions.
+def get_client_by_conditions(**conditions) -> Client:
+    """ 
+    Retrieve the client based on various conditions.
 
     Args:
         **conditions: Arbitrary keyword arguments representing column names and their desired values.
 
     Returns:
-        List[LeboncoinURL]: A list of Leboncoin URLs matching the specified conditions.
+        Client: A client matching the specified conditions.
     """
     session = Session()
     try:
-        query = session.query(LeboncoinURL)
+        query = session.query(Client)
 
         # Build filters based on provided conditions
         filters = []
         for field, value in conditions.items():
-            column = getattr(LeboncoinURL, field, None)
+            column = getattr(Client, field, None)
             if column is not None:
                 filters.append(column == value)
             else:
-                logging.warning(f"Invalid field name {field} in conditions. It does not exist in LeboncoinURL.")
+                logging.warning(f"Invalid field name {field} in conditions. It does not exist in Client.")
 
         # Apply filters to the query
         if filters:
             query = query.filter(and_(*filters))
-            logging.info(f"Retrieving Leboncoin URLs with conditions: {conditions}")
+            logging.info(f"Retrieving clients with conditions: {conditions}")
         else:
-            logging.info("No valid conditions provided. Retrieving all Leboncoin URLs.")
-
+            logging.info("No valid conditions provided. Retrieving all clients.")
+            
         # Execute query and retrieve results
-        urls = query.all()
-        logging.info(f"Retrieved {len(urls)} Leboncoin URLs.")
+        clients = query.all()
+        logging.info(f"Retrieved {len(clients)} clients.")
+        
+        return clients        
+    except Exception as e:
+        logging.error(f"Error retrieving clients: {e}", exc_info=True)
+        return []        
+    finally:
+        # Ensure the session is closed after processing
+        session.close()   
+
+def get_website_urls_by_insee_codes(insee_codes: List[str]) -> List[WebsiteURLs]:
+    """
+    Retrieve website URLs based on a list of INSEE codes.
+
+    Args:
+        insee_codes (List[str]): A list of INSEE codes to filter the results.
+
+    Returns:
+        List[WebsiteURLs]: A list of WebsiteURLs matching the specified INSEE codes.
+    """
+    session = Session()
+    try:
+        # Query the database for entries matching the provided INSEE codes
+        urls = session.query(WebsiteURLs).filter(WebsiteURLs.insee_code.in_(insee_codes)).all()
+        logging.info(f"Retrieved {len(urls)} Website URLs for INSEE codes: {insee_codes}")
 
         return urls
     except Exception as e:
-        logging.error(f"Error retrieving Leboncoin URLs: {e}", exc_info=True)
+        logging.error(f"Error retrieving Website URLs for INSEE codes {insee_codes}: {e}", exc_info=True)
         return []
     finally:
         # Ensure the session is closed after processing

@@ -35,7 +35,7 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
-from scraper import retrieve_html
+from html_retriever import retrieve_html
 from storage import process_ad, get_leboncoin_urls_by_conditions
 
 # Configure logging
