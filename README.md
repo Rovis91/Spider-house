@@ -1,81 +1,77 @@
 
-# Spider House
+# Real Estate Scraper
 
 ## Overview
 
-**Spider House** is a web scraping tool designed to extract real estate listings from platforms like Leboncoin. It automates the process of notifying users, particularly real estate agencies, about new listings that match their criteria.
+This project is designed to scrape real estate listings from multiple websites, including Leboncoin and others. The scraped data is processed and stored in a PostgreSQL database. The system uses Celery for task management, enabling scalable and parallel scraping across multiple websites and cities.
 
 ## Features
 
-- **Automated Scraping**: Extracts real estate listings with automated navigation to handle anti-bot protections.
-- **Dynamic URL Management**: Generates and verifies URLs for cities based on postal codes.
-- **Database Integration**: Stores listings, images, and city information in a PostgreSQL database.
-- **Data Validation**: Ensures all data is validated before database insertion.
+- **Scalable Scraping:** Uses Celery with Redis to manage and distribute scraping tasks across multiple workers.
+- **Modular Scraper Design:** Each website scraper inherits from a common base class, making it easy to add support for new websites.
+- **Robust Error Handling:** Implements retry logic, error logging, and pagination handling.
+- **Proxy Support:** Retrieves HTML content through proxies to avoid blocking by websites.
+- **Database Integration:** Stores scraped listings in a PostgreSQL database, ensuring data integrity and consistency.
 
-## Getting Started
+## Requirements
 
-### Prerequisites
+Ensure you have the following dependencies installed:
 
-- Python 3.8+
-- PostgreSQL
-- Set up environment variables for database and proxy configurations.
+```plaintext
+beautifulsoup4==4.12.2
+requests==2.31.0
+sqlalchemy==2.0.20
+psycopg2==2.9.6
+celery==5.2.7
+redis==4.5.4
+python-dotenv==1.0.0
+```
 
-### Installation
+You can install all dependencies using:
 
-1. **Clone the repository:**
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Running the Scraper
+
+1. **Start Redis**: Ensure Redis is running on your system.
+
+2. **Start Celery Worker**: Run the Celery worker with the following command:
 
    ```bash
-   git clone https://github.com/Rovis91/Spider-house.git
-   cd Spider-house
+   celery -A celery worker --loglevel=info
    ```
 
-2. **Install dependencies:**
+3. **Run the Orchestration Script**: Kick off the scraping tasks by running:
 
    ```bash
-   pip install -r requirements.txt
+   python orchestration.py
    ```
 
-3. **Configure environment variables**: Create a `.env` file with the following variables:
+This script will enqueue tasks for scraping various websites and cities. The Celery workers will pick up these tasks and process them concurrently.
 
-   ```plaintext
-   BD_USERNAME=
-   PASSWORD=
-   USER_AGENT=
-   COUNTRY=
-   HOST=
-   PORT=
-   DB_NAME=
-   DB_USER=
-   DB_PASSWORD=
-   DB_HOST=
-   DB_PORT=
-   ```
+### Adding New Websites
 
-### Usage
+To add support for a new website:
 
-As the project is under development, specific scripts and usage instructions will be provided in future updates.
+1. Create a new scraper class that inherits from `BaseScraper` in `scraper_base.py`.
+2. Implement the `extract_ads`, `transform_ad`, and `html_to_json` methods according to the website's structure.
+3. Define a new Celery task in `tasks.py` for the new scraper.
+4. Add the task to the orchestration script.
 
-## Contributing
+## Monitoring
 
-Contributions are welcome! Please open issues or pull requests to propose changes or report problems.
+You can monitor your Celery tasks using Flower:
+
+```bash
+celery -A celery flower
+```
+
+This will give you a web-based dashboard to track task progress, status, and more.
 
 ## License
 
-This project is licensed under [MIT License](LICENSE).
-
-## Contact
-
-For any questions, please contact me via [GitHub](https://github.com/Rovis91).
-
-## Roadmap
-
-- Integrate additional real estate websites.
-- Develop email alert systems.
-- Enhance scraping performance.
-- Implement CI/CD pipeline for deployment.
-
----
-
-### Note
-
-This project is in active development. Tests and comprehensive documentation will be added in future updates.
+This project is licensed under the MIT License.
